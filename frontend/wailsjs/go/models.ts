@@ -322,7 +322,7 @@ export namespace structs {
 	    Path: string;
 	    Target: string;
 	    Favicon: string;
-	    Args: string;
+	    Jdk: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Children(source);
@@ -335,7 +335,7 @@ export namespace structs {
 	        this.Path = source["Path"];
 	        this.Target = source["Target"];
 	        this.Favicon = source["Favicon"];
-	        this.Args = source["Args"];
+	        this.Jdk = source["Jdk"];
 	    }
 	}
 	export class OfficialAccount {
@@ -960,6 +960,20 @@ export namespace structs {
 	        this.Response = source["Response"];
 	        this.Length = source["Length"];
 	        this.Filed = source["Filed"];
+	    }
+	}
+	export class JdkConfig {
+	    name: string;
+	    path: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new JdkConfig(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.path = source["path"];
 	    }
 	}
 	

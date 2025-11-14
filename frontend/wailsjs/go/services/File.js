@@ -38,6 +38,10 @@ export function GenerateFaviconBase64WithOnline(arg1) {
   return window['go']['services']['File']['GenerateFaviconBase64WithOnline'](arg1);
 }
 
+export function GetJdkConfig() {
+  return window['go']['services']['File']['GetJdkConfig']();
+}
+
 export function GetLocalNaConfig() {
   return window['go']['services']['File']['GetLocalNaConfig']();
 }
@@ -56,6 +60,10 @@ export function InsetGroupNavigation(arg1) {
 
 export function InsetItemNavigation(arg1, arg2) {
   return window['go']['services']['File']['InsetItemNavigation'](arg1, arg2);
+}
+
+export function InsetJdkConfig(arg1) {
+  return window['go']['services']['File']['InsetJdkConfig'](arg1);
 }
 
 export function IsMacOS() {
@@ -126,16 +134,16 @@ export function SaveFileDialog(arg1) {
   return window['go']['services']['File']['SaveFileDialog'](arg1);
 }
 
+export function SaveJdkConfig(arg1) {
+  return window['go']['services']['File']['SaveJdkConfig'](arg1);
+}
+
 export function SaveNavigation(arg1) {
   return window['go']['services']['File']['SaveNavigation'](arg1);
 }
 
 export function SaveToTempFile(arg1) {
   return window['go']['services']['File']['SaveToTempFile'](arg1);
-}
-
-export function SnippetCommandLine(arg1) {
-  return window['go']['services']['File']['SnippetCommandLine'](arg1);
 }
 
 export function Startup(arg1) {
