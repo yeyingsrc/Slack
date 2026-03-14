@@ -1,7 +1,13 @@
 name: "Slack Build"
 
 on:
+  push:
+    tags:
+      - "v*"
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   package:
@@ -10,17 +16,19 @@ jobs:
       matrix:
         include:
           - name: macos-amd64
-            runs-on: macos-13
+            runs-on: macos-14
             go-version: "1.25"
             node-version: "20"
             task: darwin:package
             artifact: Slack-macos-amd64
+            task_args: ARCH=amd64
           - name: macos-arm64
             runs-on: macos-14
             go-version: "1.25"
             node-version: "20"
             task: darwin:package
             artifact: Slack-macos-arm64
+            task_args: ARCH=arm64
           - name: windows-amd64
             runs-on: windows-latest
             go-version: "1.25"
@@ -45,6 +53,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Go
         uses: actions/setup-go@v5
@@ -63,6 +73,13 @@ jobs:
         if: startsWith(matrix.runs-on, 'ubuntu')
         run: sudo apt-get update && sudo apt-get install -y build-essential pkg-config libgtk-3-dev libwebkit2gtk-4.1-dev
 
+      - name: Setup MinGW for Windows
+        if: startsWith(matrix.runs-on, 'windows')
+        uses: egor-tensin/setup-mingw@v2
+        with:
+          platform: x64
+          static: 0
+
       - name: Install Wails v3 CLI
         run: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-alpha.74
 
@@ -75,11 +92,16 @@ jobs:
 
       - name: Build macOS package
         if: startsWith(matrix.runs-on, 'macos')
-        run: wails3 task ${{ matrix.task }}
+        run: wails3 task ${{ matrix.task }} ${{ matrix.task_args }}
 
       - name: Generate bindings
         if: matrix.task == 'common-binary'
         run: wails3 generate bindings -f "-tags production -trimpath -buildvcs=false -ldflags=-w -ldflags=-s" -clean=true -ts
+
+      - name: Install frontend dependencies
+        if: matrix.task == 'common-binary'
+        working-directory: frontend
+        run: npm ci
 
       - name: Build frontend
         if: matrix.task == 'common-binary'
@@ -89,16 +111,40 @@ jobs:
       - name: Build desktop binary
         if: matrix.task == 'common-binary'
         shell: bash
+        env:
+          CC: ${{ startsWith(matrix.runs-on, 'windows') && 'gcc' || '' }}
         run: |
           GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} CGO_ENABLED=1 \
           go build -tags production -trimpath -buildvcs=false -ldflags="-w -s" -o ${{ matrix.output }}
+
+      - name: Prepare macOS artifacts
+        if: startsWith(matrix.runs-on, 'macos')
+        shell: bash
+        run: |
+          mkdir -p release
+          if [ -d build/bin/Slack.app ]; then
+            cd build/bin && zip -r "${{ matrix.artifact }}.zip" Slack.app && cd ../..
+          fi
+          if [ -f "build/bin/${{ matrix.artifact }}.zip" ]; then
+            cp "build/bin/${{ matrix.artifact }}.zip" release/
+          fi
+          if [ -f build/bin/Slack ]; then
+            cp build/bin/Slack "release/${{ matrix.artifact }}"
+          fi
+
+      - name: Prepare binary artifacts
+        if: matrix.task == 'common-binary'
+        shell: bash
+        run: |
+          mkdir -p release
+          cp "${{ matrix.output }}" "release/${{ matrix.artifact }}"
 
       - name: Upload macOS artifacts
         if: startsWith(matrix.runs-on, 'macos')
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
-          path: build/bin/**
+          path: release/**
           if-no-files-found: error
 
       - name: Upload binary artifacts
@@ -106,5 +152,49 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
-          path: ${{ matrix.output }}
+          path: release/${{ matrix.artifact }}
           if-no-files-found: error
+
+  release:
+    needs: package
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release
+          merge-multiple: true
+
+      - name: Generate release notes
+        shell: bash
+        run: |
+          current_tag="${GITHUB_REF#refs/tags/}"
+          previous_tag=$(git tag --sort=-creatordate | grep -v "^${current_tag}$" | head -n 1 || true)
+          {
+            echo "# Release ${current_tag}"
+            echo
+            echo "## Changes"
+            echo
+            if [ -n "${previous_tag}" ]; then
+              git log --pretty=format:"- %s" "${previous_tag}..${current_tag}"
+            else
+              git log --pretty=format:"- %s" "${current_tag}"
+            fi
+          } > release_notes.txt
+
+      - name: List release files
+        run: ls -la release
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/*
+          body_path: release_notes.txt
+          draft: false
