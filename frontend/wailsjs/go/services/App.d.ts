@@ -15,6 +15,8 @@ export function ExitScanner(arg1:string):Promise<void>;
 
 export function ExportCompanyInfoToExcel(arg1:Array<structs.CompanyInfo>,arg2:string):Promise<boolean>;
 
+export function ExportCompanyInfoToJson(arg1:Array<structs.CompanyInfo>,arg2:string):Promise<boolean>;
+
 export function ExtractAllJSLink(arg1:string):Promise<Array<string>>;
 
 export function FaviconMd5(arg1:string):Promise<string>;

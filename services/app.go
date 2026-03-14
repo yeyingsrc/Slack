@@ -443,6 +443,13 @@ func (a *App) WriteCompanyInfoToJson(info structs.CompanyInfo) bool {
 	return fileutil.SaveJsonWithFormat(a.ctx, fp, info)
 }
 
+func (a *App) ExportCompanyInfoToJson(infos []structs.CompanyInfo, reportpath string) bool {
+	if len(infos) == 0 || reportpath == "" {
+		return false
+	}
+	return fileutil.SaveJsonWithFormat(a.ctx, reportpath, infos)
+}
+
 type companySummaryRow struct {
 	ParentCompany string
 	CompanyName   string

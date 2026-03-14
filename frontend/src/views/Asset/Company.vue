@@ -1,8 +1,8 @@
 <script lang="ts" setup>
 import { computed, onMounted, reactive, ref } from "vue";
-import { Plus, Share, ChromeFilled } from '@element-plus/icons-vue';
+import { Plus, Share, ChromeFilled, ArrowDown } from '@element-plus/icons-vue';
 import { ElMessage, FormInstance, FormRules } from 'element-plus'
-import { ExportCompanyInfoToExcel, FetchCompanyInfo, GoFetch, ResumeAfterHumanCheck } from "wailsjs/go/services/App";
+import { ExportCompanyInfoToExcel, ExportCompanyInfoToJson, FetchCompanyInfo, GoFetch, ResumeAfterHumanCheck } from "wailsjs/go/services/App";
 import CustomTabs from "@/components/CustomTabs.vue";
 import wechatIcon from "@/assets/icon/wechatOfficialAccount.svg"
 import { debounce } from "lodash"
@@ -205,6 +205,37 @@ async function ExportExcel() {
     }
     ElMessage.error("Excel 报告导出失败")
 }
+
+async function ExportJson() {
+    if (companiesInfo.value.length === 0) {
+        ElMessage.warning("暂无结果可导出")
+        return
+    }
+    const filepath = await SaveFileDialog("company-info.json")
+    if (!filepath) {
+        return
+    }
+    const ok = await ExportCompanyInfoToJson(companiesInfo.value, filepath)
+    if (ok) {
+        ElMessage.success("JSON 报告导出成功")
+        return
+    }
+    ElMessage.error("JSON 报告导出失败")
+}
+
+async function HandleExport(command: string) {
+    switch (command) {
+        case "json":
+            await ExportJson()
+            break
+        case "excel":
+            await ExportExcel()
+            break
+        case "folder":
+            await OpenFolder(from.configPath)
+            break
+    }
+}
 </script>
 
 
@@ -305,8 +336,21 @@ async function ExportExcel() {
         </el-tabs>
         <template #ctrl>
             <el-space style="margin-right: -5px;">
-                <el-button :icon="Share" @click="OpenFolder(from.configPath)">结果保存</el-button>
-                <el-button @click="ExportExcel">导出 Excel</el-button>
+                <el-dropdown @command="HandleExport">
+                    <el-button :icon="Share">
+                        导出
+                        <el-icon class="el-icon--right">
+                            <ArrowDown />
+                        </el-icon>
+                    </el-button>
+                    <template #dropdown>
+                        <el-dropdown-menu>
+                            <el-dropdown-item command="json">导出 JSON</el-dropdown-item>
+                            <el-dropdown-item command="excel">导出 Excel</el-dropdown-item>
+                            <el-dropdown-item command="folder" divided>打开导出目录</el-dropdown-item>
+                        </el-dropdown-menu>
+                    </template>
+                </el-dropdown>
                 <el-button :icon="Plus" @click="from.newTask = true" v-if="!from.runningStatus">新建任务</el-button>
                 <el-button loading v-else>正在查询</el-button>
             </el-space>

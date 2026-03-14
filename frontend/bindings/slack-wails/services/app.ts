@@ -47,6 +47,10 @@ export function ExportCompanyInfoToExcel(infos: structs$0.CompanyInfo[], reportp
     return $Call.ByID(3040167241, infos, reportpath);
 }
 
+export function ExportCompanyInfoToJson(infos: structs$0.CompanyInfo[], reportpath: string): $CancellablePromise<boolean> {
+    return $Call.ByID(2793316784, infos, reportpath);
+}
+
 export function ExtractAllJSLink(url: string): $CancellablePromise<string[]> {
     return $Call.ByID(2554764973, url).then(($result: any) => {
         return $$createType0($result);
