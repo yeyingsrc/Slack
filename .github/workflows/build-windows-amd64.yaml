@@ -34,12 +34,22 @@ jobs:
       - name: Verify Wails environment
         run: wails3 doctor
 
-      - name: Build Wails app on Windows
-        run: wails3 build -config ./build/config.yml -platform windows/amd64
+      - name: Generate bindings
+        run: wails3 generate bindings -f "-tags production -trimpath -buildvcs=false -ldflags=-w -ldflags=-s" -clean=true -ts
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+      - name: Build Windows binary
+        shell: bash
+        run: |
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=1 \
+          go build -tags production -trimpath -buildvcs=false -ldflags="-w -s" -o build/bin/Slack.exe
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: Slack-windows-amd64
-          path: build/bin/**
+          path: build/bin/Slack.exe
           if-no-files-found: error

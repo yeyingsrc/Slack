@@ -35,7 +35,7 @@ jobs:
         run: wails3 doctor
 
       - name: Build Wails app on macOS
-        run: wails3 build -debug -devtools -config ./build/config.yml -platform darwin/amd64
+        run: wails3 task darwin:package
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
