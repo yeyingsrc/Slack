@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/qiwentaidi/clients"
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 type Exp struct {
@@ -19,8 +20,9 @@ func NewExp() *Exp {
 	return &Exp{}
 }
 
-func (e *Exp) Startup(ctx context.Context) {
+func (e *Exp) ServiceStartup(ctx context.Context, _ application.ServiceOptions) error {
 	e.ctx = ctx
+	return nil
 }
 
 func trimRightSubString(url string) string {

@@ -18,6 +18,7 @@ import (
 	"sync"
 
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/wailsapp/wails/v3/pkg/application"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -30,8 +31,9 @@ type Database struct {
 	PostgresInfo  *structs.DatabaseConnection // 用于临时存储postgres数据库连接信息，方便其他方法调用
 }
 
-func (d *Database) Startup(ctx context.Context) {
+func (d *Database) ServiceStartup(ctx context.Context, _ application.ServiceOptions) error {
 	d.ctx = ctx
+	return nil
 }
 
 func NewDatabase() *Database {

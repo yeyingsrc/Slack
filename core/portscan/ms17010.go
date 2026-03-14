@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	runtime "slack-wails/internal/wruntime"
 )
 
 var (

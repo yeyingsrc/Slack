@@ -11,10 +11,10 @@ import (
 
 	arrayutil "github.com/qiwentaidi/utils/array"
 
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	runtime "slack-wails/internal/wruntime"
 )
 
 func (d *Database) GetAllDatabaseConnections() (dcs []structs.DatabaseConnection) {

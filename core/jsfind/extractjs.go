@@ -14,7 +14,7 @@ import (
 
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/chromedp"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	runtime "slack-wails/internal/wruntime"
 )
 
 var (

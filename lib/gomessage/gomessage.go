@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	runtime "slack-wails/internal/wruntime"
 )
 
 const (

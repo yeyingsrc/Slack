@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"golang.org/x/crypto/ssh"
+	runtime "slack-wails/internal/wruntime"
 )
 
 type task struct {

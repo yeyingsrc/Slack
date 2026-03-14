@@ -144,14 +144,17 @@ const parseUsage = (val: any) => {
     return "-";
 };
 
+const applySystemStats = (payload: any) => {
+    const data = payload?.data ?? payload ?? {};
+    if (data?.cpu !== undefined) cpuUsage.value = parseUsage(data.cpu);
+    if (data?.mem !== undefined) memUsage.value = parseUsage(data.mem);
+    else if (data?.memory !== undefined) memUsage.value = parseUsage(data.memory);
+};
+
 onMounted(() => {
     loadData();
     collectHostInfo();
-    statsOff = EventsOn("system-stats", (payload: any) => {
-        if (payload?.cpu !== undefined) cpuUsage.value = parseUsage(payload.cpu);
-        if (payload?.mem !== undefined) memUsage.value = parseUsage(payload.mem);
-        else if (payload?.memory !== undefined) memUsage.value = parseUsage(payload.memory);
-    });
+    statsOff = EventsOn("system-stats", applySystemStats);
     window.addEventListener("resize", handleResize);
 });
 

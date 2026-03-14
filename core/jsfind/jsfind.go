@@ -20,7 +20,7 @@ import (
 	"maps"
 
 	"github.com/panjf2000/ants/v2"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	runtime "slack-wails/internal/wruntime"
 )
 
 const maxResponseSize = 500 * 1024 // 500KB

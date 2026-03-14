@@ -6,7 +6,7 @@ import (
 	"net/url"
 	"slack-wails/lib/gologger"
 
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	runtime "slack-wails/internal/wruntime"
 )
 
 type crackFunc func(context.Context, context.Context, string, string, []string, []string)

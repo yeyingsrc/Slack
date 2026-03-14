@@ -1,36 +1,45 @@
 name: "Slack for windows amd64"
+
 on:
   workflow_dispatch:
 
 jobs:
   package:
-    strategy:
-      matrix:
-        platform: [windows-latest]
-        go-version: [1.22]
-        arch: [amd64]
-    runs-on: ${{ matrix.platform }}
-    steps:
-      - uses: actions/checkout@v3
+    runs-on: windows-latest
 
-      - name: Install Go
-        uses: actions/setup-go@v2
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
         with:
-          go-version: ${{ matrix.go-version }}
+          go-version: "1.25"
+          cache: true
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
 
-      - name: Get Wails
-        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.9.2
+      - name: Install Wails v3 CLI
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-alpha.74
 
-      - name: Build Wails app on windows
-        run: wails build -platform windows/${{ matrix.arch }}
+      - name: Add Go bin to PATH
+        shell: bash
+        run: echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
 
-      - name: Upload Artifacts windows
+      - name: Verify Wails environment
+        run: wails3 doctor
+
+      - name: Build Wails app on Windows
+        run: wails3 build -config ./build/config.yml -platform windows/amd64
+
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: Slack-windows-amd64
-          path: build/bin/*
+          path: build/bin/**
+          if-no-files-found: error

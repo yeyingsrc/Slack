@@ -15,7 +15,7 @@ import (
 
 	"github.com/go-resty/resty/v2"
 	"github.com/panjf2000/ants/v2"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	runtime "slack-wails/internal/wruntime"
 )
 
 var maxReponseLength = 1024 * 100 // 最大响应包长度，100kb

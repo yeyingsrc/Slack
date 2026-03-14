@@ -10,7 +10,7 @@ import (
 	"time"
 
 	_ "github.com/sijms/go-ora/v2"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	runtime "slack-wails/internal/wruntime"
 )
 
 const defaultOracleServerName = "orcl"

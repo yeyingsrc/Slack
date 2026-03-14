@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/jlaffaye/ftp"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	runtime "slack-wails/internal/wruntime"
 )
 
 func FtpScan(ctx, ctrlCtx context.Context, taskId, address string, usernames, passwords []string) {

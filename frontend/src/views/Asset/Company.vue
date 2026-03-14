@@ -2,14 +2,14 @@
 import { computed, onMounted, reactive, ref } from "vue";
 import { Plus, Share, ChromeFilled } from '@element-plus/icons-vue';
 import { ElMessage, FormInstance, FormRules } from 'element-plus'
-import { FetchCompanyInfo, GoFetch, ResumeAfterHumanCheck } from "wailsjs/go/services/App";
+import { ExportCompanyInfoToExcel, FetchCompanyInfo, GoFetch, ResumeAfterHumanCheck } from "wailsjs/go/services/App";
 import CustomTabs from "@/components/CustomTabs.vue";
 import wechatIcon from "@/assets/icon/wechatOfficialAccount.svg"
 import { debounce } from "lodash"
 import { BrowserOpenURL, EventsOff, EventsOn } from "wailsjs/runtime/runtime";
 import { structs } from "wailsjs/go/models";
 import { getProxy, ProcessTextAreaInput } from "@/util";
-import { FilepathJoin, OpenFolder } from "wailsjs/go/services/File";
+import { FilepathJoin, OpenFolder, SaveFileDialog } from "wailsjs/go/services/File";
 import global from '@/stores';
 
 const companiesInfo = ref<structs.CompanyInfo[]>([])
@@ -188,6 +188,23 @@ function extractAllChildren<T>(
     dfs(companies);
     return result;
 }
+
+async function ExportExcel() {
+    if (companiesInfo.value.length === 0) {
+        ElMessage.warning("暂无结果可导出")
+        return
+    }
+    const filepath = await SaveFileDialog("company-info.xlsx")
+    if (!filepath) {
+        return
+    }
+    const ok = await ExportCompanyInfoToExcel(companiesInfo.value, filepath)
+    if (ok) {
+        ElMessage.success("Excel 报告导出成功")
+        return
+    }
+    ElMessage.error("Excel 报告导出失败")
+}
 </script>
 
 
@@ -289,6 +306,7 @@ function extractAllChildren<T>(
         <template #ctrl>
             <el-space style="margin-right: -5px;">
                 <el-button :icon="Share" @click="OpenFolder(from.configPath)">结果保存</el-button>
+                <el-button @click="ExportExcel">导出 Excel</el-button>
                 <el-button :icon="Plus" @click="from.newTask = true" v-if="!from.runningStatus">新建任务</el-button>
                 <el-button loading v-else>正在查询</el-button>
             </el-space>

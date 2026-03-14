@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/IBM/sarama"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	runtime "slack-wails/internal/wruntime"
 )
 
 func KafkaScan(ctx, ctrlCtx context.Context, taskId, address string, usernames, passwords []string) {

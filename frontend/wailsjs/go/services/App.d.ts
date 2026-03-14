@@ -9,13 +9,11 @@ export function AnalyzeAPI(arg1:string,arg2:string,arg3:Array<string>,arg4:{[key
 
 export function Callgologger(arg1:string,arg2:string):Promise<void>;
 
-export function CyberChefLocalServer():Promise<void>;
-
-export function DownloadCyberChef(arg1:string):Promise<void>;
-
 export function EnrichCompanyWithMiit(arg1:structs.CompanyInfo,arg2:string):Promise<void>;
 
 export function ExitScanner(arg1:string):Promise<void>;
+
+export function ExportCompanyInfoToExcel(arg1:Array<structs.CompanyInfo>,arg2:string):Promise<boolean>;
 
 export function ExtractAllJSLink(arg1:string):Promise<Array<string>>;
 
@@ -25,7 +23,7 @@ export function FetchCompanyInfo(arg1:string,arg2:number,arg3:structs.DataSource
 
 export function FingerprintList():Promise<Array<string>>;
 
-export function FofaSearch(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string,arg6:string,arg7:boolean,arg8:boolean):Promise<structs.FofaSearchResult>;
+export function FofaSearch(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string,arg6:string,arg7:boolean,arg8:boolean,arg9:boolean):Promise<structs.FofaSearchResult>;
 
 export function FofaTips(arg1:string):Promise<structs.TipsResult>;
 

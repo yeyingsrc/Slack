@@ -4,7 +4,7 @@ import (
 	"context"
 	"slack-wails/lib/structs"
 
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	runtime "slack-wails/internal/wruntime"
 )
 
 // 只要是nmap 扫描到jdwp协议，默认是 unauthorized (因为也是同样发JDWP-Handshake包检测)

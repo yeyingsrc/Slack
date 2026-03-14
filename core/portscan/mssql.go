@@ -10,7 +10,7 @@ import (
 	"time"
 
 	_ "github.com/microsoft/go-mssqldb"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	runtime "slack-wails/internal/wruntime"
 )
 
 func MssqlScan(ctx, ctrlCtx context.Context, taskId, host string, usernames, passwords []string) {

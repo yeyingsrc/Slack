@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	runtime "slack-wails/internal/wruntime"
 )
 
 func ActiveMQScan(ctx, ctrlCtx context.Context, taskId, address string, usernames, passwords []string) {

@@ -1,89 +1,81 @@
 package main
 
 import (
-	"context"
 	"embed"
 	core "slack-wails/core/tools"
 	"slack-wails/services"
 
 	rt "runtime"
 
-	"github.com/wailsapp/wails/v2"
-	"github.com/wailsapp/wails/v2/pkg/options"
-	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
-	"github.com/wailsapp/wails/v2/pkg/options/mac"
-	"github.com/wailsapp/wails/v2/pkg/options/windows"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/wailsapp/wails/v3/pkg/application"
+	"github.com/wailsapp/wails/v3/pkg/events"
 )
 
 //go:embed all:frontend/dist
 var assets embed.FS
 
 func main() {
-	// Create an instance of the app structure
-	app := services.NewApp()
+	svcApp := services.NewApp()
 	file := services.NewFile()
 	db := services.NewDatabase()
 	exp := services.NewExp()
 	windowSize := db.SelectWindowsSize()
-	err := wails.Run(&options.App{
-		Title:  "Slack",
-		Width:  windowSize.Width,
-		Height: windowSize.Height,
-		AssetServer: &assetserver.Options{
-			Assets: assets,
-		},
-		BackgroundColour: &options.RGBA{R: 255, G: 255, B: 255, A: 255},
-		OnStartup: func(ctx context.Context) {
-			app.Startup(ctx)
-			file.Startup(ctx)
-			db.Startup(ctx)
-			exp.Startup(ctx)
-		},
-		OnBeforeClose: app.BeforeClose,
-		DragAndDrop:   DragAndDropOptions(),
-		OnDomReady: func(ctx context.Context) {
-			runtime.OnFileDrop(ctx, func(x, y int, paths []string) {
 
-			})
+	app := application.New(application.Options{
+		Name: "Slack",
+		Assets: application.AssetOptions{
+			Handler: application.BundledAssetFileServer(assets),
 		},
-		MinWidth:  1280,
-		MinHeight: 768,
-		Bind: []interface{}{
-			app,
-			file,
-			db,
-			exp,
-			&core.Tools{},
+		Services: []application.Service{
+			application.NewService(svcApp),
+			application.NewService(file),
+			application.NewService(db),
+			application.NewService(exp),
+			application.NewService(&core.Tools{}),
 		},
-		Mac: &mac.Options{
-			TitleBar: &mac.TitleBar{
-				TitlebarAppearsTransparent: true,
-				HideTitle:                  true,
-				HideTitleBar:               true,
-				FullSizeContent:            true,
-			},
+		Mac: application.MacOptions{
+			ApplicationShouldTerminateAfterLastWindowClosed: true,
 		},
-		Windows: &windows.Options{
+		Windows: application.WindowsOptions{
 			WebviewBrowserPath: "", // 可以让windows使用默认浏览器打开链接
 		},
-		Frameless: rt.GOOS != "darwin", // 屏蔽windows/linux原生标题栏
 	})
-	if err != nil {
-		println("Error:", err.Error())
-	}
-}
 
-// Choose the appropriate one options.DragAndDrop
-func DragAndDropOptions() *options.DragAndDrop {
-	if rt.GOOS == "windows" {
-		return &options.DragAndDrop{
-			EnableFileDrop:     true,
-			DisableWebViewDrop: true,
+	window := app.Window.NewWithOptions(application.WebviewWindowOptions{
+		Name:             "main",
+		Title:            "Slack",
+		Width:            windowSize.Width,
+		Height:           windowSize.Height,
+		MinWidth:         1280,
+		MinHeight:        768,
+		EnableFileDrop:   true,
+		BackgroundColour: application.NewRGB(255, 255, 255),
+		Frameless:        rt.GOOS != "darwin", // 屏蔽windows/linux原生标题栏
+		Mac: application.MacWindow{
+			TitleBar: application.MacTitleBar{
+				AppearsTransparent: true,
+				Hide:               false,
+				HideTitle:          true,
+				FullSizeContent:    true,
+			},
+			InvisibleTitleBarHeight: 35,
+		},
+	})
+	window.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
+		if svcApp.BeforeClose(app.Context()) {
+			e.Cancel()
 		}
-	} else {
-		return &options.DragAndDrop{
-			EnableFileDrop: true,
-		}
+	})
+	window.OnWindowEvent(events.Common.WindowFilesDropped, func(event *application.WindowEvent) {
+		files := event.Context().DroppedFiles()
+		details := event.Context().DropTargetDetails()
+		app.Event.Emit("launcher:files-dropped", map[string]any{
+			"files":   files,
+			"details": details,
+		})
+	})
+
+	if err := app.Run(); err != nil {
+		println("Error:", err.Error())
 	}
 }

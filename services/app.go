@@ -44,7 +44,9 @@ import (
 	"github.com/qiwentaidi/clients"
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/mem"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/wailsapp/wails/v3/pkg/application"
+	"github.com/xuri/excelize/v2"
+	runtime "slack-wails/internal/wruntime"
 )
 
 // App struct
@@ -55,8 +57,6 @@ type App struct {
 	cdnFile          string
 	qqwryFile        string
 	templateDir      string
-	defaultPath      string
-	cyberCherDir     string
 	statsCancel      context.CancelFunc
 }
 
@@ -69,16 +69,14 @@ func NewApp() *App {
 		cdnFile:          home + "/slack/config/cdn.yaml",
 		qqwryFile:        home + "/slack/config/qqwry.dat",
 		templateDir:      home + "/slack/config/pocs",
-		defaultPath:      home + "/slack/",
-		cyberCherDir:     filepath.Join(home, "slack", "CyberChef"),
 	}
 }
 
-// startup is called when the app starts. The context is saved
-// so we can call the runtime methods
-func (a *App) Startup(ctx context.Context) {
+// ServiceStartup is called when the app starts.
+func (a *App) ServiceStartup(ctx context.Context, _ application.ServiceOptions) error {
 	a.ctx = ctx
 	a.startSystemStatsEmitter()
+	return nil
 }
 
 // 返回 true 将导致应用程序继续，false 将继续正常关闭
@@ -141,6 +139,8 @@ func (a *App) startSystemStatsEmitter() {
 		a.statsCancel()
 	}
 
+	a.emitSystemStats()
+
 	ctx, cancel := context.WithCancel(a.ctx)
 	a.statsCancel = cancel
 
@@ -190,26 +190,6 @@ func (a *App) GoFetch(method, target string, body interface{}, headers map[strin
 		Header:    headerMap,
 		Body:      string(resp.Body()),
 	}
-}
-
-var CyberChefLoader sync.Once
-
-func (a *App) CyberChefLocalServer() {
-	CyberChefLoader.Do(func() {
-		go func() {
-			// 定义要服务的目录
-			// 创建文件服务器
-			fs := http.FileServer(http.Dir(a.cyberCherDir))
-			// 创建独立的 ServeMux
-			mux := http.NewServeMux()
-			mux.Handle("/", fs)
-
-			err := http.ListenAndServe(fmt.Sprintf(":%d", 8731), mux)
-			if err != nil {
-				return
-			}
-		}()
-	})
 }
 
 var qqwryLoader sync.Once
@@ -463,6 +443,301 @@ func (a *App) WriteCompanyInfoToJson(info structs.CompanyInfo) bool {
 	return fileutil.SaveJsonWithFormat(a.ctx, fp, info)
 }
 
+type companySummaryRow struct {
+	ParentCompany string
+	CompanyName   string
+	Investment    string
+	Amount        string
+	RegStatus     string
+	Depth         int
+	Domains       string
+}
+
+type companyDomainRow struct {
+	BelongCompany string
+	Domain        string
+}
+
+type companyOfficialAccountRow struct {
+	BelongCompany string
+	Name          string
+	Numbers       string
+	Logo          string
+	Qrcode        string
+	Introduction  string
+}
+
+type companyAppRow struct {
+	BelongCompany string
+	ServiceName   string
+	ServiceLicence string
+	UpdateRecordTime string
+	UnitName      string
+}
+
+func (a *App) ExportCompanyInfoToExcel(infos []structs.CompanyInfo, reportpath string) bool {
+	f := excelize.NewFile()
+	f.DeleteSheet("Sheet1")
+
+	headerStyle, err := f.NewStyle(&excelize.Style{
+		Font:      &excelize.Font{Bold: true, Color: "#FFFFFF"},
+		Fill:      excelize.Fill{Type: "pattern", Color: []string{"#1F2937"}, Pattern: 1},
+		Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center"},
+		Border: []excelize.Border{
+			{Type: "left", Color: "#D1D5DB", Style: 1},
+			{Type: "top", Color: "#D1D5DB", Style: 1},
+			{Type: "right", Color: "#D1D5DB", Style: 1},
+			{Type: "bottom", Color: "#D1D5DB", Style: 1},
+		},
+	})
+	if err != nil {
+		gologger.Error(a.ctx, "Failed to create company excel header style: "+err.Error())
+		return false
+	}
+
+	bodyStyle, err := f.NewStyle(&excelize.Style{
+		Alignment: &excelize.Alignment{Vertical: "top"},
+		Border: []excelize.Border{
+			{Type: "left", Color: "#E5E7EB", Style: 1},
+			{Type: "top", Color: "#E5E7EB", Style: 1},
+			{Type: "right", Color: "#E5E7EB", Style: 1},
+			{Type: "bottom", Color: "#E5E7EB", Style: 1},
+		},
+	})
+	if err != nil {
+		gologger.Error(a.ctx, "Failed to create company excel body style: "+err.Error())
+		return false
+	}
+
+	wrapStyle, err := f.NewStyle(&excelize.Style{
+		Alignment: &excelize.Alignment{Vertical: "top", WrapText: true},
+		Border: []excelize.Border{
+			{Type: "left", Color: "#E5E7EB", Style: 1},
+			{Type: "top", Color: "#E5E7EB", Style: 1},
+			{Type: "right", Color: "#E5E7EB", Style: 1},
+			{Type: "bottom", Color: "#E5E7EB", Style: 1},
+		},
+	})
+	if err != nil {
+		gologger.Error(a.ctx, "Failed to create company excel wrap style: "+err.Error())
+		return false
+	}
+
+	var summaryRows []companySummaryRow
+	var domainRows []companyDomainRow
+	var officialAccountRows []companyOfficialAccountRow
+	var appRows []companyAppRow
+	var appletRows []companyAppRow
+
+	var walkCompany func(parent string, info structs.CompanyInfo, depth int)
+	walkCompany = func(parent string, info structs.CompanyInfo, depth int) {
+		summaryRows = append(summaryRows, companySummaryRow{
+			ParentCompany: parent,
+			CompanyName:   info.CompanyName,
+			Investment:    info.Investment,
+			Amount:        info.Amount,
+			RegStatus:     info.RegStatus,
+			Depth:         depth,
+			Domains:       strings.Join(info.Domains, "\n"),
+		})
+
+		for _, domain := range info.Domains {
+			domainRows = append(domainRows, companyDomainRow{
+				BelongCompany: info.CompanyName,
+				Domain:        domain,
+			})
+		}
+
+		for _, item := range info.OfficialAccounts {
+			officialAccountRows = append(officialAccountRows, companyOfficialAccountRow{
+				BelongCompany: info.CompanyName,
+				Name:          item.Name,
+				Numbers:       item.Numbers,
+				Logo:          item.Logo,
+				Qrcode:        item.Qrcode,
+				Introduction:  item.Introduction,
+			})
+		}
+
+		for _, item := range info.Apps {
+			appRows = append(appRows, companyAppRow{
+				BelongCompany:    info.CompanyName,
+				ServiceName:      item.ServiceName,
+				ServiceLicence:   item.ServiceLicence,
+				UpdateRecordTime: item.UpdateRecordTime,
+				UnitName:         item.UnitName,
+			})
+		}
+
+		for _, item := range info.Applets {
+			appletRows = append(appletRows, companyAppRow{
+				BelongCompany:    info.CompanyName,
+				ServiceName:      item.ServiceName,
+				ServiceLicence:   item.ServiceLicence,
+				UpdateRecordTime: item.UpdateRecordTime,
+				UnitName:         item.UnitName,
+			})
+		}
+
+		for _, child := range info.Subsidiaries {
+			walkCompany(info.CompanyName, child, depth+1)
+		}
+	}
+
+	for _, info := range infos {
+		walkCompany("", info, 0)
+	}
+
+	writeSheet := func(name string, headers []string, rows [][]interface{}, wrapColumns map[int]bool) {
+		f.NewSheet(name)
+		maxWidths := make([]int, len(headers))
+		for index, header := range headers {
+			cell, _ := excelize.CoordinatesToCellName(index+1, 1)
+			f.SetCellValue(name, cell, header)
+			if len([]rune(header)) > maxWidths[index] {
+				maxWidths[index] = len([]rune(header))
+			}
+		}
+		for rowIndex, row := range rows {
+			for colIndex, value := range row {
+				cell, _ := excelize.CoordinatesToCellName(colIndex+1, rowIndex+2)
+				f.SetCellValue(name, cell, value)
+				textWidth := len([]rune(fmt.Sprint(value)))
+				if textWidth > maxWidths[colIndex] {
+					maxWidths[colIndex] = textWidth
+				}
+			}
+		}
+
+		lastColumn, _ := excelize.ColumnNumberToName(len(headers))
+		lastRow := len(rows) + 1
+		if lastRow < 1 {
+			lastRow = 1
+		}
+		_ = f.SetCellStyle(name, "A1", fmt.Sprintf("%s1", lastColumn), headerStyle)
+		if len(rows) > 0 {
+			_ = f.SetCellStyle(name, "A2", fmt.Sprintf("%s%d", lastColumn, len(rows)+1), bodyStyle)
+			for colIndex := range headers {
+				if wrapColumns[colIndex] {
+					column, _ := excelize.ColumnNumberToName(colIndex + 1)
+					_ = f.SetCellStyle(name, fmt.Sprintf("%s2", column), fmt.Sprintf("%s%d", column, len(rows)+1), wrapStyle)
+				}
+			}
+		}
+		for index, width := range maxWidths {
+			column, _ := excelize.ColumnNumberToName(index + 1)
+			finalWidth := float64(width + 4)
+			if finalWidth < 12 {
+				finalWidth = 12
+			}
+			if finalWidth > 48 {
+				finalWidth = 48
+			}
+			_ = f.SetColWidth(name, column, column, finalWidth)
+		}
+		_ = f.SetRowHeight(name, 1, 24)
+		_ = f.SetPanes(name, &excelize.Panes{
+			Freeze:      true,
+			Split:       false,
+			XSplit:      0,
+			YSplit:      1,
+			TopLeftCell: "A2",
+			ActivePane:  "bottomLeft",
+		})
+		_ = f.AutoFilter(name, fmt.Sprintf("A1:%s%d", lastColumn, lastRow), []excelize.AutoFilterOptions{})
+	}
+
+	reportTime := time.Now().Format("2006-01-02 15:04:05")
+	summarySheet := "Summary"
+	f.NewSheet(summarySheet)
+	summaryItems := [][]interface{}{
+		{"生成时间", reportTime},
+		{"导出企业数", len(infos)},
+		{"公司/子公司总数", len(summaryRows)},
+		{"域名总数", len(domainRows)},
+		{"公众号总数", len(officialAccountRows)},
+		{"APP 总数", len(appRows)},
+		{"小程序总数", len(appletRows)},
+	}
+	for rowIndex, row := range summaryItems {
+		for colIndex, value := range row {
+			cell, _ := excelize.CoordinatesToCellName(colIndex+1, rowIndex+1)
+			f.SetCellValue(summarySheet, cell, value)
+		}
+	}
+	_ = f.SetCellStyle(summarySheet, "A1", "A7", headerStyle)
+	_ = f.SetCellStyle(summarySheet, "B1", "B7", bodyStyle)
+	_ = f.SetColWidth(summarySheet, "A", "A", 18)
+	_ = f.SetColWidth(summarySheet, "B", "B", 22)
+	if summaryIndex, err := f.GetSheetIndex(summarySheet); err == nil {
+		f.SetActiveSheet(summaryIndex)
+	}
+
+	var summaryData [][]interface{}
+	for _, row := range summaryRows {
+		summaryData = append(summaryData, []interface{}{
+			row.ParentCompany,
+			row.CompanyName,
+			row.Investment,
+			row.Amount,
+			row.RegStatus,
+			row.Depth,
+			row.Domains,
+		})
+	}
+	writeSheet("Companies", []string{"ParentCompany", "CompanyName", "Investment", "Amount", "RegStatus", "Depth", "Domains"}, summaryData, map[int]bool{6: true})
+
+	var domainData [][]interface{}
+	for _, row := range domainRows {
+		domainData = append(domainData, []interface{}{row.BelongCompany, row.Domain})
+	}
+	writeSheet("Domains", []string{"BelongCompany", "Domain"}, domainData, nil)
+
+	var officialAccountData [][]interface{}
+	for _, row := range officialAccountRows {
+		officialAccountData = append(officialAccountData, []interface{}{
+			row.BelongCompany,
+			row.Name,
+			row.Numbers,
+			row.Logo,
+			row.Qrcode,
+			row.Introduction,
+		})
+	}
+	writeSheet("OfficialAccounts", []string{"BelongCompany", "Name", "Numbers", "Logo", "Qrcode", "Introduction"}, officialAccountData, map[int]bool{3: true, 4: true, 5: true})
+
+	var appData [][]interface{}
+	for _, row := range appRows {
+		appData = append(appData, []interface{}{
+			row.BelongCompany,
+			row.ServiceName,
+			row.ServiceLicence,
+			row.UpdateRecordTime,
+			row.UnitName,
+		})
+	}
+	writeSheet("Apps", []string{"BelongCompany", "ServiceName", "ServiceLicence", "UpdateRecordTime", "UnitName"}, appData, nil)
+
+	var appletData [][]interface{}
+	for _, row := range appletRows {
+		appletData = append(appletData, []interface{}{
+			row.BelongCompany,
+			row.ServiceName,
+			row.ServiceLicence,
+			row.UpdateRecordTime,
+			row.UnitName,
+		})
+	}
+	writeSheet("Applets", []string{"BelongCompany", "ServiceName", "ServiceLicence", "UpdateRecordTime", "UnitName"}, appletData, nil)
+
+	if err := f.SaveAs(reportpath); err != nil {
+		gologger.Error(a.ctx, "Failed to save company excel report: "+err.Error())
+		return false
+	}
+
+	return true
+}
+
 // dirsearch
 func (a *App) LoadDirsearchDict(dictPath, newExts []string) []string {
 	var dicts []string
@@ -566,13 +841,13 @@ func (a *App) FofaTips(query string) *structs.TipsResult {
 	return &ts
 }
 
-func (a *App) FofaSearch(query, pageSzie, pageNum, address, email, key string, fraud, cert bool) *structs.FofaSearchResult {
+func (a *App) FofaSearch(query, pageSzie, pageNum, address, email, key string, fraud, cert, withFid bool) *structs.FofaSearchResult {
 	config := space.NewFofaConfig(&structs.FofaAuth{
 		Address: address,
 		Email:   email,
 		Key:     key,
 	})
-	return config.FofaApiSearch(a.ctx, query, pageSzie, pageNum, fraud, cert)
+	return config.FofaApiSearch(a.ctx, query, pageSzie, pageNum, fraud, cert, withFid)
 }
 
 func (a *App) Socks5Conn(ip string, port, timeout int, username, password, aliveURL string) bool {

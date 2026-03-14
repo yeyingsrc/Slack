@@ -10,7 +10,7 @@ import (
 	"time"
 
 	_ "github.com/lib/pq"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	runtime "slack-wails/internal/wruntime"
 )
 
 func PostgresScan(ctx, ctrlCtx context.Context, taskId, host string, usernames, passwords []string) {

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	runtime "slack-wails/internal/wruntime"
 )
 
 func MemcachedScan(ctx, ctrlCtx context.Context, taskId, host string, usernames, passwords []string) {

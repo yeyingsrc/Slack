@@ -20,7 +20,7 @@ import (
 	"github.com/tomatome/grdp/protocol/t125"
 	"github.com/tomatome/grdp/protocol/tpkt"
 	"github.com/tomatome/grdp/protocol/x224"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	runtime "slack-wails/internal/wruntime"
 )
 
 func RdpScan(ctx, ctrlCtx context.Context, taskId, host string, usernames, passwords []string) {

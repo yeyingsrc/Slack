@@ -18,7 +18,7 @@ import (
 	"github.com/qiwentaidi/clients"
 
 	"github.com/minio/selfupdate"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	runtime "slack-wails/internal/wruntime"
 )
 
 func download(target, dest string) (string, error) {

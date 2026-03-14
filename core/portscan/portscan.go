@@ -15,7 +15,7 @@ import (
 
 	"github.com/panjf2000/ants/v2"
 	"github.com/qiwentaidi/clients"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	runtime "slack-wails/internal/wruntime"
 )
 
 func TcpScan(ctx, ctrlCtx context.Context, taskId string, addresses <-chan Address, workers, timeout int, proxyURL string) {

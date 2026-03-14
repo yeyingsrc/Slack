@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	runtime "slack-wails/internal/wruntime"
 )
 
 func TelnetScan(ctx, ctrlCtx context.Context, taskId, host string, usernames, passwords []string) {

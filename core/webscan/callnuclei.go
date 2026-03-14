@@ -21,7 +21,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	syncutil "github.com/projectdiscovery/utils/sync"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	runtime "slack-wails/internal/wruntime"
 )
 
 // nuclei 最大响应包大小

@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/qiwentaidi/clients"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	runtime "slack-wails/internal/wruntime"
 )
 
 const defaultAliveURL = "http://www.baidu.com"

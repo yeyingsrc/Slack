@@ -27,7 +27,7 @@ import (
 	arrayutil "github.com/qiwentaidi/utils/array"
 
 	"github.com/panjf2000/ants/v2"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	runtime "slack-wails/internal/wruntime"
 )
 
 type Subdomain struct {

@@ -4,11 +4,10 @@ import (
 	"archive/zip"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
-
-	"github.com/wailsapp/wails/v2/pkg/logger"
 )
 
 // reference: https://raw.githubusercontent.com/artdarek/go-unzip/master/pkg/unzip/unzip.go
@@ -27,7 +26,7 @@ func (uz Unzip) Extract(source, destination string) ([]string, error) {
 
 	defer func() {
 		if err := r.Close(); err != nil {
-			logger.NewDefaultLogger().Fatal(err.Error())
+			log.Fatal(err.Error())
 		}
 	}()
 
@@ -56,7 +55,7 @@ func (Unzip) extractAndWriteFile(destination string, f *zip.File) error {
 	}
 	defer func() {
 		if err := rc.Close(); err != nil {
-			logger.NewDefaultLogger().Fatal(err.Error())
+			log.Fatal(err.Error())
 		}
 	}()
 
@@ -82,7 +81,7 @@ func (Unzip) extractAndWriteFile(destination string, f *zip.File) error {
 		}
 		defer func() {
 			if err := f.Close(); err != nil {
-				logger.NewDefaultLogger().Fatal(err.Error())
+				log.Fatal(err.Error())
 			}
 		}()
 

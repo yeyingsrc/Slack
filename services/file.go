@@ -19,7 +19,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/wailsapp/wails/v3/pkg/application"
+	runtime "slack-wails/internal/wruntime"
 )
 
 var Userdict = map[string][]string{
@@ -51,8 +52,9 @@ type File struct {
 	downloadPath string
 }
 
-func (f *File) Startup(ctx context.Context) {
+func (f *File) ServiceStartup(ctx context.Context, _ application.ServiceOptions) error {
 	f.ctx = ctx
+	return nil
 }
 
 func NewFile() *File {
@@ -350,20 +352,6 @@ func (*File) SaveToTempFile(content string) string {
 		return ""
 	}
 	return tempFileName
-}
-
-func (a *App) DownloadCyberChef(url string) error {
-	cyber := utils.HomeDir() + "/slack/CyberChef.zip"
-	fileName, err := update.NewDownload(a.ctx, url, a.defaultPath, "downloadProgress", "")
-	if err != nil {
-		return err
-	}
-	runtime.EventsEmit(a.ctx, "downloadComplete", fileName)
-	uz := fileutil.NewUnzip()
-	if _, err := uz.Extract(cyber, a.defaultPath); err != nil {
-		return err
-	}
-	return os.Remove(cyber)
 }
 
 func (f *File) Restart() {

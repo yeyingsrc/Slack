@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/mitchellh/go-vnc"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	runtime "slack-wails/internal/wruntime"
 )
 
 func VncScan(ctx, ctrlCtx context.Context, taskId, host string, usernames, passwords []string) {

@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
+	runtime "slack-wails/internal/wruntime"
 )
 
 func MongodbScan(ctx, ctrlCtx context.Context, taskId, host string, usernames, passwords []string) {

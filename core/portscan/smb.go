@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/stacktitan/smb/smb"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	runtime "slack-wails/internal/wruntime"
 )
 
 func SmbScan(ctx, ctrlCtx context.Context, taskId, host string, usernames, passwords []string) {

@@ -2,8 +2,8 @@
 import { ElMessage, ElMessageBox } from "element-plus";
 import { reactive, ref, h, computed } from "vue";
 import { DeleteFilled, Edit, FolderOpened, Document, Menu, WarningFilled, Guide, PictureRounded, Warning, Delete } from "@element-plus/icons-vue";
-import { onMounted } from "vue";
-import { OnFileDrop } from "wailsjs/runtime/runtime";
+import { onMounted, onUnmounted } from "vue";
+import { EventsOn } from "wailsjs/runtime/runtime";
 import { Path, GetLocalNaConfig, InsetGroupNavigation, InsetItemNavigation, OpenFolder, SaveNavigation, RunApp, FileDialog, OpenTerminal, GenerateFaviconBase64WithOnline, GenerateFaviconBase64, AutoGenerateFavicon, GetJdkConfig, InsetJdkConfig, SaveJdkConfig } from "wailsjs/go/services/File";
 import ContextMenu from '@imengyu/vue3-context-menu'
 import groupIcon from "@/assets/icon/tag-group.svg"
@@ -21,38 +21,49 @@ import global from "@/stores";
 import { structs } from "wailsjs/go/models";
 import Note from "@/components/Note.vue";
 
+let fileDropCleanup: null | (() => void) = null
+
+async function handleLauncherFileDrop(payload: any) {
+    const paths = Array.isArray(payload?.files) ? payload.files : []
+    const groupName = payload?.details?.attributes?.["data-group"]
+
+    if (paths.length === 0) {
+        return
+    }
+    if (!groupName) {
+        return
+    }
+
+    const card = localGroup.options.value.find(item => item.Name === groupName)
+    if (!card) {
+        return
+    }
+
+    for (const p of paths) {
+        if (!p) continue
+        const pathinfo = await Path(p)
+        const base64Icon = await AutoGenerateFavicon(p)
+        const c = {
+            Name: pathinfo.Name,
+            Type: localGroup.getExtType(pathinfo.Ext),
+            Path: p,
+            Target: "",
+            Favicon: base64Icon,
+            Jdk: "",
+        }
+        card.Children = card.Children || []
+        card.Children.push(c)
+        const ok = await InsetItemNavigation(groupName, c)
+        if (!ok) {
+            ElMessage.error(`写入失败: ${c.Name}`)
+        }
+    }
+}
 
 onMounted(async () => {
-    OnFileDrop((x, y, paths) => {
-        const el = document.elementFromPoint(x, y);
-        if (!el) return;
-
-        const target = el.closest('[data-group]');
-        if (!target) return;
-
-        const groupName = target.getAttribute('data-group');
-        if (!groupName) return;
-
-        const card = localGroup.options.value.find(item => item.Name === groupName);
-        if (!card) return;
-
-        paths.forEach(async (p) => {
-            if (!p) return;
-            const pathinfo = await Path(p);
-            const base64Icon = await AutoGenerateFavicon(p);
-            const c = {
-                Name: pathinfo.Name,
-                Type: localGroup.getExtType(pathinfo.Ext),
-                Path: p,
-                Target: "",
-                Favicon: base64Icon,
-                Jdk: "",
-            };
-            card.Children = card.Children || [];
-            card.Children.push(c);
-            InsetItemNavigation(groupName, c);
-        });
-    }, true);
+    fileDropCleanup = EventsOn("launcher:files-dropped", (event) => {
+        handleLauncherFileDrop(event?.data)
+    })
     let groups = await GetLocalNaConfig()
     if (groups) {
         localGroup.options.value = groups
@@ -63,6 +74,13 @@ onMounted(async () => {
     let jdkConfigTemp = await GetJdkConfig()
     if (jdkConfigTemp) {
         jdkConfig.value = jdkConfigTemp
+    }
+})
+
+onUnmounted(() => {
+    if (fileDropCleanup) {
+        fileDropCleanup()
+        fileDropCleanup = null
     }
 })
 
@@ -487,8 +505,13 @@ function handleButtonContextMenu(e: MouseEvent, groups: any, item: any) {
         <el-button :icon="groupIcon" @click="localGroup.addGroup()">添加分组</el-button>
     </div>
     <div v-if="filteredGroups.length > 0" v-for="groups in filteredGroups" class="mb-5px">
-        <el-card @drop="(event: DragEvent) => event.preventDefault()" class="drop-enable"
-            @contextmenu.stop.prevent="handleCardContextMenu($event, groups)" :data-group="groups.Name">
+        <el-card
+            @drop="(event: DragEvent) => event.preventDefault()"
+            class="drop-enable"
+            @contextmenu.stop.prevent="handleCardContextMenu($event, groups)"
+            :data-group="groups.Name"
+            data-file-drop-target="true"
+        >
             <div class="flex-between" style="margin-bottom: 20px">
                 <span class="font-bold">{{ groups.Name }}</span>
                 <el-button :icon="DeleteFilled" link @click="localGroup.deleteGroup(groups.Name)"></el-button>
@@ -681,8 +704,9 @@ function handleButtonContextMenu(e: MouseEvent, groups: any, item: any) {
     margin-top: 10px;
 }
 
-.drop-enable {
-    --wails-drop-target: drop;
+.drop-enable.file-drop-target-active {
+    outline: 1px dashed var(--el-color-primary);
+    outline-offset: -1px;
 }
 
 .custom-style {

@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/go-ldap/ldap/v3"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	runtime "slack-wails/internal/wruntime"
 )
 
 func LdapScan(ctx, ctrlCtx context.Context, taskId, host string, usernames, passwords []string) {

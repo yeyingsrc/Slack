@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { WindowToggleMaximise, WindowGetSize, WindowIsMaximised } from "wailsjs/runtime/runtime";
+import { WindowToggleMaximise, WindowGetSize, WindowIsMaximised, WindowZoom } from "wailsjs/runtime/runtime";
 import global from "@/stores";
 import { ref, onMounted, onBeforeUnmount, computed, nextTick } from "vue";
 import runnerIcon from "@/assets/icon/apprunner.svg";
@@ -47,9 +47,32 @@ const throttleUpdate = throttle((width: number, height: number) => {
   SaveWindowsScreenSize(width, height);
 }, 1000);
 
+function handleSearchInput(value: string) {
+  if (!value.startsWith(">")) {
+    return;
+  }
+
+  nextTick(() => {
+    if (!searchRef.value) {
+      return;
+    }
+    searchRef.value.activated = true;
+    searchRef.value.getData?.(value);
+  });
+}
+
 function toggleMaximise() {
   WindowToggleMaximise();
   syncMaxState();
+}
+
+function handleTitlebarDoubleClick() {
+  if (global.temp.isMacOS) {
+    WindowZoom();
+    return;
+  }
+
+  toggleMaximise();
 }
 
 function setTitle(path: string) {
@@ -169,6 +192,7 @@ const handleSelect = (item: any) => {
 };
 
 const placeholder = computed(() => setTitle(route.path));
+const navigationControls = computed(() => routerControl.slice(0, 2));
 
 const helperItems = computed(() => [
   {
@@ -181,7 +205,7 @@ const helperItems = computed(() => [
 ]);
 
 const defaultMenus = computed(() => {
-  const popularPaths = ["/Webscan", "/Dirsearch", "/FOFA", "/CyberChef"];
+  const popularPaths = ["/Webscan", "/Dirsearch", "/FOFA", "/DataHanding"];
   return popularPaths
     .map((path) => {
       const item = allTools.value.find((tool) => tool.path === path);
@@ -279,12 +303,17 @@ const shortcutKeys = computed(() => (global.temp.isMacOS ? [macCommandKey, "K"] 
 </script>
 
 <template>
-  <div class="titlebar" :style="titlebarStyle">
+  <div class="titlebar" :class="{ 'is-mac': global.temp.isMacOS }" :style="titlebarStyle" @dblclick="handleTitlebarDoubleClick">
     <div class="left">
-      <div class="left-actions">
+      <div v-if="global.temp.isMacOS" class="mac-traffic-lights-gap" aria-hidden="true"></div>
+      <div class="drag-region left-drag-region"></div>
+    </div>
+
+    <div class="center">
+      <div class="left-actions" @dblclick.stop>
         <div class="nav-actions">
-          <el-tooltip v-for="item in routerControl" :content="$t(item.label)">
-            <el-button text class="custom-button" @click="item.action">
+          <el-tooltip v-for="item in navigationControls" :content="$t(item.label)">
+            <el-button text class="custom-button" @click="item.action" @dblclick.stop>
               <el-icon :size="16">
                 <component :is="item.icon" />
               </el-icon>
@@ -292,13 +321,10 @@ const shortcutKeys = computed(() => (global.temp.isMacOS ? [macCommandKey, "K"] 
           </el-tooltip>
         </div>
       </div>
-    </div>
-
-    <div class="center" @dblclick="toggleMaximise">
-      <div class="search-container" @dblclick.stop>
+      <div class="search-container" @mouseup.stop @dblclick.stop>
         <el-autocomplete ref="searchRef" v-model="searchText" :fetch-suggestions="fetchSuggestions"
           :placeholder="placeholder" :trigger-on-focus="true" size="small" :prefix-icon="Search" class="title-search"
-          @select="handleSelect" @keyup.enter.native="openFirst">
+          @input="handleSearchInput" @select="handleSelect" @keyup.enter.native="openFirst">
           <template #default="{ item }">
             <div :class="['search-row', item.type]">
               <span class="name">
@@ -320,9 +346,10 @@ const shortcutKeys = computed(() => (global.temp.isMacOS ? [macCommandKey, "K"] 
     </div>
 
     <div class="right flex">
-      <div class="action-buttons">
+      <div class="drag-region right-drag-region"></div>
+      <div class="action-buttons" @dblclick.stop>
         <el-tooltip :content="$t('titlebar.app_launcher')">
-          <el-button class="custom-button" text @click="$router.push('/AppLauncher')">
+          <el-button class="custom-button" text @click="$router.push('/AppLauncher')" @dblclick.stop>
             <template #icon>
               <el-icon :size="16">
                 <runnerIcon />
@@ -331,9 +358,9 @@ const shortcutKeys = computed(() => (global.temp.isMacOS ? [macCommandKey, "K"] 
           </el-button>
         </el-tooltip>
       </div>
-      <el-divider direction="vertical" />
-      <el-button-group class="window-controls">
-        <el-button v-for="item in windowsControl" :class="item.class!" text @click="item.action">
+      <el-divider v-if="!global.temp.isMacOS" direction="vertical" />
+      <el-button-group v-if="!global.temp.isMacOS" class="window-controls" @dblclick.stop>
+        <el-button v-for="item in windowsControl" :class="item.class!" text @click="item.action" @dblclick.stop>
           <template #icon>
             <el-icon size="16">
               <component :is="item.icon" />
@@ -351,6 +378,7 @@ const shortcutKeys = computed(() => (global.temp.isMacOS ? [macCommandKey, "K"] 
 
 <style scoped>
 .titlebar {
+  --mac-traffic-lights-gap: 78px;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -361,7 +389,7 @@ const shortcutKeys = computed(() => (global.temp.isMacOS ? [macCommandKey, "K"] 
   border-bottom: 1px solid var(--el-border-color-lighter);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
   box-sizing: border-box;
-  --wails-draggable: drag;
+  --wails-draggable: no-drag;
   cursor: default;
 
   .custom-button {
@@ -373,6 +401,11 @@ const shortcutKeys = computed(() => (global.temp.isMacOS ? [macCommandKey, "K"] 
     transition: background 0.12s ease;
     --wails-draggable: no-drag;
   }
+}
+
+.titlebar.is-mac {
+  padding-left: 0;
+  padding-right: 6px;
 }
 
 .titlebar .el-button-group {
@@ -416,7 +449,14 @@ const shortcutKeys = computed(() => (global.temp.isMacOS ? [macCommandKey, "K"] 
   align-items: center;
   gap: 12px;
   flex: 1;
-  --wails-draggable: drag;
+  min-width: 0;
+}
+
+.mac-traffic-lights-gap {
+  width: var(--mac-traffic-lights-gap);
+  min-width: var(--mac-traffic-lights-gap);
+  height: 100%;
+  flex: 0 0 var(--mac-traffic-lights-gap);
 }
 
 .left-actions {
@@ -427,12 +467,13 @@ const shortcutKeys = computed(() => (global.temp.isMacOS ? [macCommandKey, "K"] 
 }
 
 .center {
-  flex: 1;
+  flex: 0 1 auto;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-direction: row;
-  --wails-draggable: drag;
+  gap: 8px;
+  --wails-draggable: no-drag;
 }
 
 .search-meta {
@@ -463,9 +504,9 @@ const shortcutKeys = computed(() => (global.temp.isMacOS ? [macCommandKey, "K"] 
   display: flex;
   justify-content: center;
   align-items: center;
-  width: 100%;
-  max-width: 460px;
-  min-width: 260px;
+  width: min(100%, 620px);
+  max-width: 620px;
+  min-width: 360px;
   padding: 0;
   background: transparent;
   border-radius: 0;
@@ -475,8 +516,8 @@ const shortcutKeys = computed(() => (global.temp.isMacOS ? [macCommandKey, "K"] 
 
 .title-search {
   width: 100%;
-  max-width: 460px;
-  min-width: 260px;
+  max-width: 620px;
+  min-width: 360px;
   flex: 1 1 auto;
   display: inline-flex;
 }
@@ -556,7 +597,27 @@ const shortcutKeys = computed(() => (global.temp.isMacOS ? [macCommandKey, "K"] 
   justify-content: flex-end;
   gap: 6px;
   flex: 1;
+  min-width: 0;
+  --wails-draggable: no-drag;
+}
+
+.drag-region {
+  flex: 1 1 auto;
+  align-self: stretch;
+  min-width: 24px;
   --wails-draggable: drag;
+}
+
+.left-drag-region {
+  min-width: 96px;
+}
+
+.right-drag-region {
+  min-width: 24px;
+}
+
+.titlebar.is-mac .action-buttons {
+  margin-left: auto;
 }
 
 .action-buttons {

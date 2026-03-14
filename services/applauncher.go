@@ -26,7 +26,7 @@ import (
 	"github.com/nfnt/resize"
 	"github.com/orcastor/fico"
 	lnk "github.com/parsiya/golnk"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	runtime "slack-wails/internal/wruntime"
 )
 
 var (
